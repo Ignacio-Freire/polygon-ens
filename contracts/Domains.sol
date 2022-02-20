@@ -59,7 +59,7 @@ contract Domains is ERC721URIStorage {
 
   function register(string calldata name) public payable {
     if (domains[name] != address(0)) revert AlreadyRegistered();
-    if (!valid(name)) revert InvalidName(name);function register(string calldata name) public payable {
+    if (!valid(name)) revert InvalidName(name);
     require(domains[name] == address(0));
 
     uint256 _price = price(name);
