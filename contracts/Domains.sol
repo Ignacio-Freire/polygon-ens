@@ -26,13 +26,40 @@ contract Domains is ERC721URIStorage {
 
   mapping(string => address) public domains;
   mapping(string => string) public records;
+  mapping (uint => string) public names;
 
-  constructor(string memory _tld) payable ERC721("Ninja Name Service", "NNS") {
+
+  address payable public owner;
+
+  error Unauthorized();
+  error AlreadyRegistered();
+  error InvalidName(string name);
+
+  constructor(string memory _tld) ERC721 ("WTF Name Service", "WTF") payable {
+    owner = payable(msg.sender);
     tld = _tld;
     console.log("%s name service deployed", _tld);
   }
 
+  modifier onlyOwner() {
+    require(isOwner());
+    _;
+  }
+
+  function isOwner() public view returns (bool) {
+    return msg.sender == owner;
+  }
+
+  function withdraw() public onlyOwner {
+    uint amount = address(this).balance;
+    
+    (bool success, ) = msg.sender.call{value: amount}("");
+    require(success, "Failed to withdraw Matic");
+  } 
+
   function register(string calldata name) public payable {
+    if (domains[name] != address(0)) revert AlreadyRegistered();
+    if (!valid(name)) revert InvalidName(name);function register(string calldata name) public payable {
     require(domains[name] == address(0));
 
     uint256 _price = price(name);
@@ -76,6 +103,11 @@ contract Domains is ERC721URIStorage {
     domains[name] = msg.sender;
 
     _tokenIds.increment();
+    names[newRecordId] = name;
+  }
+
+  function valid(string calldata name) public pure returns(bool) {
+    return StringUtils.strlen(name) >= 3 && StringUtils.strlen(name) <= 10;
   }
 		
   // This function will give us the price of a domain based on length
@@ -92,9 +124,8 @@ contract Domains is ERC721URIStorage {
   }
 
   function setRecord(string calldata name, string calldata record) public {
-      // Check that the owner is the transaction sender
-      require(domains[name] == msg.sender);
-      records[name] = record;
+    if (msg.sender != domains[name]) revert Unauthorized();
+    records[name] = record;
   }
 
   function getRecord(string calldata name) public view returns(string memory) {
@@ -104,5 +135,16 @@ contract Domains is ERC721URIStorage {
   function getAddress(string calldata name) public view returns (address) {
       // Check that the owner is the transaction sender
       return domains[name];
+  }
+
+  function getAllNames() public view returns (string[] memory) {
+    console.log("Getting all names from contract");
+    string[] memory allNames = new string[](_tokenIds.current());
+    for (uint i = 0; i < _tokenIds.current(); i++) {
+      allNames[i] = names[i];
+      console.log("Name for token %d is %s", i, allNames[i]);
+    }
+
+    return allNames;
   }
 }
